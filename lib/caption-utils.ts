@@ -49,6 +49,7 @@ export interface CaptionOptions {
   showWhatsAppGroup: boolean
   showMercadoLivreSearchLink: boolean
   showBenefits: boolean
+  showHashtags: boolean
   includeEmojis: boolean
   hashtagMode: HashtagMode
   hashtagQuantity: 5 | 10 | 15
@@ -74,12 +75,14 @@ export interface AiScore {
   cta: number
   emojis: number
   conversao: number
+  hashtags: number
   urgencia: number
 }
 
 export interface GeneratedContent {
   caption: string
   cta: string
+  hashtags: HashtagGroups
   score: AiScore
 }
 
@@ -158,6 +161,7 @@ export const defaultOptions: CaptionOptions = {
   showWhatsAppGroup: true,
   showMercadoLivreSearchLink: false,
   showBenefits: true,
+  showHashtags: true,
   includeEmojis: true,
   hashtagMode: "virais",
   hashtagQuantity: 10,
@@ -321,18 +325,30 @@ export function parseProductDescription(rawText: string): ProductInfo {
   let discount = ""
   let link = ""
   let groupLink = ""
+  let price = ""
+  let originalPrice = ""
   const prices: string[] = []
   const features: string[] = []
+  const explicitBenefits: string[] = []
 
   for (const line of lines) {
-    const priceMatches = line.match(/R\$\s*[\d.,]+/g)
-    const linkMatch = line.match(
+    const field = parseBriefingField(line)
+    const normalizedKey = field ? normalizeText(field.key) : ""
+    const value = field ? cleanLine(field.value) : ""
+    const lineForParsing = value || line
+    const priceMatches = lineForParsing.match(/R\$\s*[\d.,]+|\b\d{2,5},\d{2}\b/g)
+    const linkMatch = lineForParsing.match(
       /(https?:\/\/[^\s]+|(?:www\.)?[a-z0-9-]+\.[a-z]{2,}(?:\.[a-z]{2,})?\/[^\s]+|(?:meli|amzn|shopee|wa)\.[^\s]+)/i
     )
 
-    if (linkMatch) {
-      const found = linkMatch[0]
-      if (isGroupLinkLine(line, found)) {
+    if (field && /^(produto|nome|titulo|item)$/.test(normalizedKey)) {
+      name = value
+      continue
+    }
+
+    if (linkMatch || (field && /link|url/.test(normalizedKey))) {
+      const found = linkMatch?.[0] || value
+      if (isGroupLinkLine(line, found) || /grupo|whats|zap|canal/.test(normalizedKey)) {
         groupLink = found
       } else {
         link = found
@@ -341,13 +357,30 @@ export function parseProductDescription(rawText: string): ProductInfo {
     }
 
     if (priceMatches) {
-      prices.push(...priceMatches)
+      const parsedPrices = priceMatches.map(ensureCurrency)
+      if (/antigo|antes|preco de|valor de|^de$/.test(normalizedKey) || /^de\s+/i.test(line)) {
+        originalPrice = parsedPrices[0]
+      } else if (/atual|promocional|oferta|preco|valor|por/.test(normalizedKey) || /^por\s+/i.test(line)) {
+        price = parsedPrices[parsedPrices.length - 1]
+      } else {
+        prices.push(...parsedPrices)
+      }
       continue
     }
 
-    const discountMatch = line.match(/\d{1,2}%\s*OFF/i)
-    if (discountMatch && /off|desconto|promo/i.test(line)) {
+    const discountMatch = lineForParsing.match(/\d{1,2}%\s*OFF/i)
+    if (discountMatch && (/off|desconto|promo/i.test(lineForParsing) || /desconto|oferta/.test(normalizedKey))) {
       discount = discountMatch[0].toUpperCase()
+      continue
+    }
+
+    if (field && /beneficio|beneficios|vantagem|vantagens|promessa|resolve|dor/.test(normalizedKey)) {
+      explicitBenefits.push(...splitList(value).map(toBenefitText))
+      continue
+    }
+
+    if (field && /especificacao|especificacoes|destaque|destaques|material|acabamento|indicado|uso|serve|compatibilidade|garantia|tamanho|medida|capacidade|voltagem|potencia/.test(normalizedKey)) {
+      features.push(...splitList(value).map((item) => `${field.key}: ${item}`))
       continue
     }
 
@@ -359,8 +392,10 @@ export function parseProductDescription(rawText: string): ProductInfo {
     features.push(cleanLine(line))
   }
 
-  const originalPrice = prices.length > 1 ? prices[0] : ""
-  const price = prices.length > 1 ? prices[1] : prices[0] || ""
+  if (!price) price = prices.length > 1 ? prices[1] : prices[0] || ""
+  if (!originalPrice) originalPrice = prices.length > 1 ? prices[0] : ""
+
+  const generatedBenefits = buildCommercialBenefits(name, features)
 
   return {
     name: name || "Produto em destaque",
@@ -369,8 +404,8 @@ export function parseProductDescription(rawText: string): ProductInfo {
     discount,
     link,
     groupLink,
-    features: features.slice(0, 6),
-    benefits: buildCommercialBenefits(name, features).slice(0, 4),
+    features: unique(features).slice(0, 8),
+    benefits: unique([...explicitBenefits, ...generatedBenefits]).slice(0, 5),
   }
 }
 
@@ -732,12 +767,18 @@ function calculateAiScore(
   const hashtagCount = Object.values(hashtags).flat().length
   const hasUrgency = /agora|hoje|acab|limit|dispon/i.test(caption)
   const hasPriceSignal = options.showPrice ? /R\$|preco|por /i.test(caption) : true
+  const hashtagScore = options.showHashtags
+    ? hashtagCount > 0
+      ? 72 + Math.min(hashtagCount, options.hashtagQuantity) * 2
+      : 45
+    : 80
 
   const score: AiScore = {
     clareza: clampScore(caption.length > 80 && caption.length < 1200 ? 88 : 68),
     cta: clampScore(cta ? 92 : 45),
     emojis: clampScore(options.includeEmojis ? 86 : 72),
     conversao: clampScore(hasPriceSignal && cta ? 90 : 62),
+    hashtags: clampScore(hashtagScore),
     urgencia: clampScore(hasUrgency ? 90 : options.platform === "whatsapp" || options.platform === "telegram" ? 66 : 78),
     total: 0,
   }
@@ -797,6 +838,37 @@ function cleanLine(line: string): string {
   return line.replace(/^[-*•]\s*/, "").trim()
 }
 
+function parseBriefingField(line: string): { key: string; value: string } | null {
+  const match = line.match(/^([^:\-]{3,36})\s*:\s*(.+)$/)
+  if (!match) return null
+  return { key: cleanLine(match[1]), value: cleanLine(match[2]) }
+}
+
+function normalizeText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+}
+
+function splitList(value: string): string[] {
+  return value
+    .split(/[,;|]\s*|\s+\+\s+/)
+    .map(cleanLine)
+    .filter((item) => item.length > 2)
+}
+
+function ensureCurrency(value: string): string {
+  const clean = value.trim()
+  return /^R\$/i.test(clean) ? clean.replace(/^r\$/i, "R$") : `R$ ${clean}`
+}
+
+function toBenefitText(value: string): string {
+  const clean = cleanLine(value).replace(/[.!]+$/, "")
+  return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : clean
+}
+
 function shouldIgnoreMarketplaceLine(line: string): boolean {
   const normalized = line
     .normalize("NFD")
@@ -822,73 +894,106 @@ function isGroupLinkLine(line: string, link: string): boolean {
 function buildCommercialBenefits(productName: string, features: string[]): string[] {
   const benefits: string[] = []
   const source = features.join(" ").toLowerCase()
+  const fullText = normalizeText(`${productName} ${source}`)
 
   for (const feature of features) {
-    const normalized = feature
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
+    const normalized = normalizeText(feature)
+    const value = feature.includes(":") ? feature.split(":").slice(1).join(":").trim() : feature
 
-    const kitMatch = normalized.match(/unidades?\s+por\s+kit:\s*(\d+)/)
+    const kitMatch = normalized.match(/(?:kit|conjunto|unidades? por kit).*?(\d+)/)
     if (kitMatch) {
-      benefits.push(`Kit com ${kitMatch[1]} peças`)
+      benefits.push(`Kit com ${kitMatch[1]} pecas para comprar melhor de uma vez`)
+      continue
+    }
+
+    if (/promessa|resolve|dor/.test(normalized)) {
+      benefits.push(toBenefitText(value))
+      continue
+    }
+
+    if (/indicado|ideal para|uso|serve para/.test(normalized)) {
+      benefits.push(`Indicado para ${value.replace(/^para\s+/i, "")}`)
+      continue
+    }
+
+    if (/garantia/.test(normalized)) {
+      benefits.push("Compra com mais seguranca por contar com garantia")
+      continue
+    }
+
+    if (/bivolt|110v|220v|voltagem/.test(normalized)) {
+      benefits.push("Mais praticidade na instalacao por aceitar a voltagem informada")
       continue
     }
 
     if (/vidro temperado/.test(normalized)) {
-      benefits.push("Feito de vidro temperado resistente")
+      benefits.push("Vidro temperado resistente para uso frequente")
       continue
     }
 
-    if (/inox|aco inox|aço inox/.test(normalized)) {
-      benefits.push("Material resistente e com acabamento duravel")
+    if (/inox|aco inox/.test(normalized)) {
+      benefits.push("Acabamento resistente e com visual mais premium")
       continue
     }
 
-    if (/usb|recarreg/.test(normalized)) {
-      benefits.push("Uso pratico com recarga simples no dia a dia")
+    if (/silicone|emborrach|antiderrapante/.test(normalized)) {
+      benefits.push("Mais firmeza e seguranca durante o uso")
       continue
     }
 
-    if (/portatil|compact/.test(normalized)) {
-      benefits.push("Compacto e facil de levar para qualquer lugar")
+    if (/usb|recarreg|sem fio|wireless|bluetooth/.test(normalized)) {
+      benefits.push("Uso pratico no dia a dia, com menos fios e mais mobilidade")
       continue
     }
 
-    if (/potencia|watts|\bw\b/.test(normalized)) {
-      benefits.push("Boa potencia para entregar desempenho eficiente")
+    if (/portatil|compact|leve|dobravel/.test(normalized)) {
+      benefits.push("Compacto e facil de levar ou guardar")
       continue
     }
 
-    if (/velocidade|modo|nivel/.test(normalized)) {
-      benefits.push("Ajustes versateis para diferentes necessidades")
+    if (/potencia|watts|\bw\b|mah|rpm/.test(normalized)) {
+      benefits.push("Desempenho eficiente para entregar resultado com agilidade")
       continue
     }
 
-    if (/facil|limp/.test(normalized)) {
-      benefits.push("Facil de limpar e manter conservado")
+    if (/velocidade|modo|nivel|ajuste|regulavel/.test(normalized)) {
+      benefits.push("Ajustes versateis para adaptar o uso a sua necessidade")
+      continue
+    }
+
+    if (/facil|limp|lavavel|removivel/.test(normalized)) {
+      benefits.push("Limpeza simples para manter o produto sempre pronto")
+      continue
+    }
+
+    if (/tamanho|medida|capacidade|litro|ml|cm|polegada/.test(normalized)) {
+      benefits.push("Tamanho bem definido para escolher com mais seguranca")
       continue
     }
   }
 
-  if (/assadeira|travessa|marinex|vidro/.test(source) || /assadeira|travessa|marinex|vidro/i.test(productName)) {
+  if (/assadeira|travessa|marinex|vidro/.test(fullText)) {
     benefits.push("Ideal para assados e receitas do dia a dia")
-    benefits.push("Fácil de limpar e durável")
+    benefits.push("Facil de limpar e feito para durar mais")
   }
 
-  if (/projetor|full hd|hdmi|wi-fi|wifi/i.test(`${productName} ${source}`)) {
-    benefits.push("Ideal para filmes, aulas e apresentacoes")
-    benefits.push("Imagem ampla para uma experiencia mais imersiva")
+  if (/projetor|full hd|hdmi|wi-fi|wifi/.test(fullText)) {
+    benefits.push("Transforma qualquer ambiente em uma experiencia de tela grande")
+    benefits.push("Otimo para filmes, aulas e apresentacoes com mais impacto")
   }
 
-  if (/beleza|secador|escova|maquiagem|pele/i.test(`${productName} ${source}`)) {
+  if (/beleza|secador|escova|maquiagem|pele/.test(fullText)) {
     benefits.push("Ajuda a cuidar da rotina de beleza com mais praticidade")
+  }
+
+  if (/cozinha|panela|air fryer|liquidificador|cafeteira/.test(fullText)) {
+    benefits.push("Facilita o preparo e deixa a rotina da cozinha mais pratica")
   }
 
   benefits.push("Produto pratico para facilitar a rotina")
   benefits.push("Boa opcao para quem busca utilidade e custo-beneficio")
 
-  return unique(benefits).slice(0, 4)
+  return unique(benefits).slice(0, 5)
 }
 
 function formatAffiliateProductSummary(
@@ -916,7 +1021,7 @@ function formatAffiliateProductSummary(
     : buildCommercialBenefits(product.name, product.features)
 
   if (options.showBenefits) {
-    lines.push("", "✅ Benefícios:")
+    lines.push("", "✅ Melhores beneficios:")
     benefits.slice(0, 4).forEach((benefit) => {
       lines.push(`• ${benefit}`)
     })
@@ -975,6 +1080,7 @@ function unique(values: string[]): string[] {
 }
 
 function clampScore(value: number): number {
+  if (!Number.isFinite(value)) return 0
   return Math.max(0, Math.min(100, Math.round(value)))
 }
 

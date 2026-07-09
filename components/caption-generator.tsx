@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
+  BadgeCheck,
   Check,
   Copy,
   Crown,
   Hash,
   History,
+  Lightbulb,
   LayoutDashboard,
   Link2,
+  ListChecks,
   MessageCircle,
   PanelLeft,
   Save,
@@ -43,15 +46,37 @@ import {
   SavedTemplate,
 } from "@/lib/caption-utils"
 
-const sampleInput = `Mini projetor portatil Full HD
-Imagem ate 120 polegadas
-Conexao HDMI, USB e Wi-Fi
-Ideal para filmes, aulas e apresentacoes
-De R$ 399,90
-R$ 289,90
-35% OFF
-https://mercadolivre.com.br/projetor-demo
-https://chat.whatsapp.com/grupo-demo`
+const briefingTemplate = `Produto: Mini projetor portatil Full HD
+Principal promessa: cinema em casa sem ocupar espaco
+Beneficios: imagem grande, facil de instalar, bom para filmes e aulas
+Especificacoes: ate 120 polegadas, HDMI, USB, Wi-Fi
+Indicado para: quartos, sala, aulas e apresentacoes
+Material/acabamento: corpo compacto e leve
+Preco antigo: R$ 399,90
+Preco atual: R$ 289,90
+Desconto: 35% OFF
+Link afiliado: https://mercadolivre.com.br/projetor-demo
+Grupo WhatsApp: https://chat.whatsapp.com/grupo-demo`
+
+const sampleInput = briefingTemplate
+
+const briefingInsights = [
+  { label: "Promessa clara", icon: <Lightbulb className="h-4 w-4" /> },
+  { label: "Beneficios fortes", icon: <BadgeCheck className="h-4 w-4" /> },
+  { label: "Especificacoes uteis", icon: <ListChecks className="h-4 w-4" /> },
+]
+
+const briefingPlaceholder = `Produto:
+Principal promessa:
+Beneficios:
+Especificacoes:
+Indicado para:
+Material/acabamento:
+Preco antigo:
+Preco atual:
+Desconto:
+Link afiliado:
+Grupo WhatsApp:`
 
 const displayControls: Array<{
   key: keyof Pick<
@@ -69,7 +94,7 @@ const displayControls: Array<{
   { key: "showWhatsAppGroup", label: "Mostrar grupo Zap", icon: <Users className="h-4 w-4" /> },
   { key: "showMercadoLivreSearchLink", label: "Mostrar busca Mercado Livre", icon: <Search className="h-4 w-4" /> },
   { key: "showHashtags", label: "Mostrar hashtags", icon: <Hash className="h-4 w-4" /> },
-  { key: "showBenefits", label: "Mostrar benefícios", icon: <Check className="h-4 w-4" /> },
+  { key: "showBenefits", label: "Mostrar beneficios", icon: <Check className="h-4 w-4" /> },
 ]
 
 export function CaptionGenerator() {
@@ -256,32 +281,76 @@ export function CaptionGenerator() {
               <HeroPanel score={currentOutput.score.total} platform={options.platform} />
 
               <GlassPanel title="Briefing do produto" icon={<MessageCircle className="h-4 w-4" />}>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {briefingInsights.map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-semibold text-slate-200"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-cyan-300/12 text-cyan-200">
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+
                 <textarea
                   value={rawInput}
                   onChange={(event) => {
                     setRawInput(event.target.value)
                     setGenerated(null)
                   }}
-                  placeholder="Cole nome, beneficios, preco, desconto, link afiliado e link do grupo..."
-                  className="min-h-[220px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-6 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50 focus:ring-4 focus:ring-cyan-300/10"
+                  placeholder={briefingPlaceholder}
+                  className="mt-4 min-h-[320px] w-full resize-y rounded-2xl border border-white/10 bg-black/25 p-4 font-mono text-sm leading-6 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50 focus:ring-4 focus:ring-cyan-300/10"
                 />
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                  <span className="rounded-full border border-white/10 px-3 py-1">
-                    Produto: {product.name}
-                  </span>
-                  {product.price && (
-                    <span className="rounded-full border border-white/10 px-3 py-1">
-                      Preco detectado: {product.price}
-                    </span>
-                  )}
-                  {product.link && (
-                    <span className="rounded-full border border-white/10 px-3 py-1">
-                      Link detectado
-                    </span>
-                  )}
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <BriefingSignal label="Produto" value={product.name} active={product.name !== "Produto em destaque"} />
+                  <BriefingSignal label="Preco" value={product.price || "Nao detectado"} active={Boolean(product.price)} />
+                  <BriefingSignal label="Desconto" value={product.discount || "Opcional"} active={Boolean(product.discount)} />
+                  <BriefingSignal label="Beneficios" value={`${product.benefits.length} prontos`} active={product.benefits.length > 0} />
+                </div>
+
+                {product.benefits.length > 0 && (
+                  <div className="mt-4 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.06] p-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                      Beneficios gerados
+                    </p>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {product.benefits.slice(0, 4).map((benefit) => (
+                        <div key={benefit} className="flex gap-2 text-sm leading-5 text-slate-200">
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                          <span>{benefit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRawInput(briefingTemplate)
+                      setGenerated(null)
+                    }}
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+                  >
+                    Carregar modelo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRawInput("")
+                      setGenerated(null)
+                    }}
+                    className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-xs font-semibold text-slate-400 transition hover:bg-white/10 hover:text-white"
+                  >
+                    Novo briefing
+                  </button>
                 </div>
               </GlassPanel>
-
               <GlassPanel title="Links manuais" icon={<Link2 className="h-4 w-4" />}>
                 <div className="grid gap-3 md:grid-cols-3">
                   <label className="block">
@@ -328,7 +397,7 @@ export function CaptionGenerator() {
                 </div>
               </GlassPanel>
 
-              <GlassPanel title="Controle de Exibição" icon={<Sparkles className="h-4 w-4" />}>
+              <GlassPanel title="Controle de Exibicao" icon={<Sparkles className="h-4 w-4" />}>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {displayControls.map((control) => (
                     <DisplayToggle
@@ -348,7 +417,7 @@ export function CaptionGenerator() {
                 <div className="space-y-4">
                   <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      Opções
+                      Opcoes
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       {hashtagModes.map((mode) => (
@@ -661,6 +730,33 @@ function GlassPanel({
   )
 }
 
+function BriefingSignal({
+  label,
+  value,
+  active,
+}: {
+  label: string
+  value: string
+  active: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border px-4 py-3",
+        active
+          ? "border-cyan-300/25 bg-cyan-300/[0.08]"
+          : "border-white/10 bg-black/10"
+      )}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+      <p className={cn("mt-1 truncate text-sm font-semibold", active ? "text-slate-100" : "text-slate-500")}>
+        {value}
+      </p>
+    </div>
+  )
+}
 function DisplayToggle({
   checked,
   label,
