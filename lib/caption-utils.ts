@@ -25,7 +25,7 @@ export type CaptionStyle =
   | "urgencia"
   | "minimalista"
 
-export type HashtagMode = "virais" | "nicho" | "produto" | "local"
+export type HashtagMode = "virais" | "global" | "trending" | "ecommerce" | "premium" | "nicho" | "produto" | "local"
 
 export interface ProductInfo {
   name: string
@@ -48,7 +48,6 @@ export interface CaptionOptions {
   showAffiliateLink: boolean
   showWhatsAppGroup: boolean
   showMercadoLivreSearchLink: boolean
-  showHashtags: boolean
   showBenefits: boolean
   includeEmojis: boolean
   hashtagMode: HashtagMode
@@ -60,6 +59,10 @@ export interface CaptionOptions {
 
 export interface HashtagGroups {
   virais: string[]
+  global: string[]
+  trending: string[]
+  ecommerce: string[]
+  premium: string[]
   nicho: string[]
   produto: string[]
   local: string[]
@@ -71,14 +74,12 @@ export interface AiScore {
   cta: number
   emojis: number
   conversao: number
-  hashtags: number
   urgencia: number
 }
 
 export interface GeneratedContent {
   caption: string
   cta: string
-  hashtags: HashtagGroups
   score: AiScore
 }
 
@@ -135,6 +136,10 @@ export const styles: Array<{ value: CaptionStyle; label: string }> = [
 
 export const hashtagModes: Array<{ value: HashtagMode; label: string }> = [
   { value: "virais", label: "Virais" },
+  { value: "global", label: "Globais" },
+  { value: "trending", label: "Trending" },
+  { value: "ecommerce", label: "E-commerce" },
+  { value: "premium", label: "Premium" },
   { value: "nicho", label: "Nicho" },
   { value: "produto", label: "Produto" },
   { value: "local", label: "Local" },
@@ -152,7 +157,6 @@ export const defaultOptions: CaptionOptions = {
   showAffiliateLink: true,
   showWhatsAppGroup: true,
   showMercadoLivreSearchLink: false,
-  showHashtags: false,
   showBenefits: true,
   includeEmojis: true,
   hashtagMode: "virais",
@@ -169,7 +173,6 @@ const platformPresets: Record<Platform, Partial<CaptionOptions>> = {
     showDiscount: true,
     showAffiliateLink: true,
     showWhatsAppGroup: true,
-    showHashtags: false,
     showBenefits: true,
     objective: "conversao",
   },
@@ -179,7 +182,6 @@ const platformPresets: Record<Platform, Partial<CaptionOptions>> = {
     showDiscount: true,
     showAffiliateLink: true,
     showWhatsAppGroup: true,
-    showHashtags: false,
     showBenefits: true,
     objective: "conversao",
   },
@@ -189,7 +191,6 @@ const platformPresets: Record<Platform, Partial<CaptionOptions>> = {
     showDiscount: true,
     showAffiliateLink: true,
     showWhatsAppGroup: false,
-    showHashtags: true,
     showBenefits: true,
     objective: "engajamento",
   },
@@ -199,7 +200,6 @@ const platformPresets: Record<Platform, Partial<CaptionOptions>> = {
     showDiscount: false,
     showAffiliateLink: false,
     showWhatsAppGroup: false,
-    showHashtags: true,
     showBenefits: true,
     objective: "viralizacao",
   },
@@ -209,7 +209,6 @@ const platformPresets: Record<Platform, Partial<CaptionOptions>> = {
     showDiscount: false,
     showAffiliateLink: false,
     showWhatsAppGroup: false,
-    showHashtags: true,
     showBenefits: true,
     objective: "viralizacao",
   },
@@ -219,7 +218,6 @@ const platformPresets: Record<Platform, Partial<CaptionOptions>> = {
     showDiscount: false,
     showAffiliateLink: false,
     showWhatsAppGroup: false,
-    showHashtags: true,
     showBenefits: true,
     objective: "viralizacao",
   },
@@ -229,7 +227,6 @@ const platformPresets: Record<Platform, Partial<CaptionOptions>> = {
     showDiscount: false,
     showAffiliateLink: false,
     showWhatsAppGroup: false,
-    showHashtags: true,
     showBenefits: true,
     objective: "trafego",
   },
@@ -239,7 +236,6 @@ const platformPresets: Record<Platform, Partial<CaptionOptions>> = {
     showDiscount: true,
     showAffiliateLink: true,
     showWhatsAppGroup: false,
-    showHashtags: true,
     showBenefits: true,
     objective: "engajamento",
   },
@@ -583,6 +579,85 @@ function generateHashtagGroups(
       "#valeapena",
       "#promoimperdivel",
     ],
+    global: unique([
+      ...productWords,
+      "#viral",
+      "#trending",
+      "#fyp",
+      "#foryou",
+      "#musthave",
+      "#bestfinds",
+      "#amazonfinds",
+      "#tiktokmademebuyit",
+      "#dealsoftheday",
+      "#onlineshopping",
+      "#shopping",
+      "#wishlist",
+      "#giftideas",
+      "#lifehacks",
+      "#newarrivals",
+      "#toprated",
+      "#smartshopping",
+      "#viralproducts",
+    ]),
+    trending: unique([
+      ...productWords,
+      "#fyp",
+      "#foryoupage",
+      "#trendingnow",
+      "#trendalert",
+      "#viralproducts",
+      "#musthaveitems",
+      "#tiktokfinds",
+      "#reelsviral",
+      "#explorepage",
+      "#shorts",
+      "#unboxing",
+      "#productreview",
+      "#wowfinds",
+      "#cantmiss",
+      "#obsessed",
+      "#needthis",
+      "#worthit",
+    ]),
+    ecommerce: unique([
+      ...productWords,
+      "#deals",
+      "#discount",
+      "#sale",
+      "#bestseller",
+      "#shopnow",
+      "#onlineshop",
+      "#coupon",
+      "#clearance",
+      "#shoppingdeals",
+      "#productreview",
+      "#buyerfinds",
+      "#dailydeals",
+      "#hotdeals",
+      "#savemoney",
+      "#budgetfinds",
+      "#smartbuy",
+      "#mustbuy",
+    ]),
+    premium: unique([
+      ...productWords,
+      "#premiumfinds",
+      "#luxuryfinds",
+      "#aesthetic",
+      "#minimalstyle",
+      "#homeinspo",
+      "#qualityproducts",
+      "#curatedfinds",
+      "#giftguide",
+      "#modernliving",
+      "#styleinspo",
+      "#essentials",
+      "#dailyessentials",
+      "#upgrade",
+      "#designlovers",
+      "#beautifulfinds",
+    ]),
     nicho: [
       "#comprasonline",
       "#produtosuteis",
@@ -663,7 +738,6 @@ function calculateAiScore(
     cta: clampScore(cta ? 92 : 45),
     emojis: clampScore(options.includeEmojis ? 86 : 72),
     conversao: clampScore(hasPriceSignal && cta ? 90 : 62),
-    hashtags: clampScore(options.showHashtags && hashtagCount >= 5 ? 88 : options.showHashtags ? 68 : 72),
     urgencia: clampScore(hasUrgency ? 90 : options.platform === "whatsapp" || options.platform === "telegram" ? 66 : 78),
     total: 0,
   }
@@ -693,7 +767,7 @@ function sanitizeByRules(text: string, options: CaptionOptions): string {
   if (!options.showHashtags) {
     output = output
       .split("\n")
-      .filter((line) => !line.includes("#") && !/^(Virais|Nicho|Produto|Local):/i.test(line))
+      .filter((line) => !line.includes("#") && !/^(Virais|Globais|Trending|E-commerce|Premium|Nicho|Produto|Local):/i.test(line))
       .join("\n")
   }
   if (!options.includeEmojis) {
@@ -820,7 +894,7 @@ function buildCommercialBenefits(productName: string, features: string[]): strin
 function formatAffiliateProductSummary(
   product: ProductInfo,
   options: CaptionOptions,
-  hashtags: HashtagGroups,
+  hashtagGroups: HashtagGroups,
   cta: string
 ): string {
   const lines = ["📦 Produto:", product.name]
@@ -865,8 +939,7 @@ function formatAffiliateProductSummary(
   }
 
   if (options.showHashtags) {
-    lines.push("", "🏷️ Hashtags:")
-    lines.push(formatHashtags(hashtags))
+    lines.push(formatHashtags(hashtagGroups))
   }
 
   return lines.join("\n")
@@ -887,6 +960,10 @@ function buildDisplayCta(product: ProductInfo, options: CaptionOptions): string 
 function emptyHashtagGroups(): HashtagGroups {
   return {
     virais: [],
+    global: [],
+    trending: [],
+    ecommerce: [],
+    premium: [],
     nicho: [],
     produto: [],
     local: [],

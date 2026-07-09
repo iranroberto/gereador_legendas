@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
-  BookOpen,
   Check,
   Copy,
   Crown,
@@ -17,8 +16,6 @@ import {
   Search,
   Send,
   Sparkles,
-  Tag,
-  Tags,
   Trash2,
   Users,
   Wand2,
@@ -29,7 +26,6 @@ import { GlowButton } from "./glow-button"
 import { HistoryPanel } from "./history-panel"
 import { ParticleBackground } from "./particle-background"
 import {
-  applyPlatformPreset,
   CaptionOptions,
   defaultOptions,
   generateContent,
@@ -57,90 +53,9 @@ R$ 289,90
 https://mercadolivre.com.br/projetor-demo
 https://chat.whatsapp.com/grupo-demo`
 
-const libraryExamples = [
-  {
-    name: "Mercado Livre",
-    category: "Marketplace",
-    input: `Jogo Assadeira Quadrada Vidro Marinex 2 Pecas
-MAIS VENDIDO
-1o em Travessas e Assadeiras Nadir
-4.9
-Avaliacao 4.9 de 5. 525 opinioes.
-R$ 47,39
-R$ 42,65
-10% OFF
-Unidades por kit: 2
-Formato de venda: Kit
-E feito de vidro temperado.`,
-  },
-  {
-    name: "Shopee",
-    category: "Achadinhos",
-    input: `Mini liquidificador portatil recarregavel
-R$ 89,90
-R$ 59,90
-33% OFF
-Copo de 380ml
-Carregamento USB
-Laminas em inox
-Compacto para levar na bolsa`,
-  },
-  {
-    name: "Amazon",
-    category: "Tecnologia",
-    input: `Echo Pop Smart Speaker Alexa
-R$ 349,00
-R$ 269,00
-23% OFF
-Controle dispositivos inteligentes
-Som frontal potente
-Comando de voz com Alexa
-Design compacto para qualquer ambiente`,
-  },
-  {
-    name: "Beleza",
-    category: "Cuidados pessoais",
-    input: `Escova secadora modeladora 3 em 1
-R$ 159,90
-R$ 119,90
-25% OFF
-Tecnologia ionica
-Tres temperaturas
-Ideal para secar, alisar e modelar
-Cabo giratorio`,
-  },
-  {
-    name: "Moda",
-    category: "Lifestyle",
-    input: `Bolsa feminina transversal casual
-R$ 99,90
-R$ 69,90
-30% OFF
-Alca ajustavel
-Compartimentos internos
-Material sintetico resistente
-Ideal para uso diario`,
-  },
-  {
-    name: "Delivery",
-    category: "Local",
-    input: `Combo hamburguer artesanal com batata
-R$ 39,90
-R$ 29,90
-25% OFF
-Pao brioche
-Blend 160g
-Batata crocante inclusa
-Entrega rapida na regiao`,
-  },
-]
-
 const displayControls: Array<{
   key: keyof Pick<
     CaptionOptions,
-    | "showPrice"
-    | "showOldPrice"
-    | "showDiscount"
     | "showAffiliateLink"
     | "showWhatsAppGroup"
     | "showMercadoLivreSearchLink"
@@ -150,9 +65,6 @@ const displayControls: Array<{
   label: string
   icon: React.ReactNode
 }> = [
-  { key: "showPrice", label: "Mostrar preço", icon: <Tag className="h-4 w-4" /> },
-  { key: "showOldPrice", label: "Mostrar preço antigo", icon: <Tags className="h-4 w-4" /> },
-  { key: "showDiscount", label: "Mostrar desconto", icon: <Sparkles className="h-4 w-4" /> },
   { key: "showAffiliateLink", label: "Mostrar link afiliado", icon: <Link2 className="h-4 w-4" /> },
   { key: "showWhatsAppGroup", label: "Mostrar grupo Zap", icon: <Users className="h-4 w-4" /> },
   { key: "showMercadoLivreSearchLink", label: "Mostrar busca Mercado Livre", icon: <Search className="h-4 w-4" /> },
@@ -186,11 +98,6 @@ export function CaptionGenerator() {
     [product, options]
   )
   const currentOutput = generated || livePreview
-
-  const handlePlatformChange = (platform: Platform) => {
-    setOptions((prev) => applyPlatformPreset(prev, platform))
-    setGenerated(null)
-  }
 
   const updateDisplayOption = (
     key: (typeof displayControls)[number]["key"],
@@ -303,8 +210,6 @@ export function CaptionGenerator() {
 
       <div className="relative z-10 flex min-h-screen">
         <Sidebar
-          activePlatform={options.platform}
-          onPlatformChange={handlePlatformChange}
           open={mobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
           onOpenHistory={() => setShowHistory(true)}
@@ -445,7 +350,7 @@ export function CaptionGenerator() {
                     <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                       Opções
                     </p>
-                    <div className="grid gap-3 md:grid-cols-4">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       {hashtagModes.map((mode) => (
                         <button
                           key={mode.value}
@@ -492,46 +397,6 @@ export function CaptionGenerator() {
                   </div>
                 </div>
               </GlassPanel>
-
-              <GlassPanel title="Formato ativo" icon={<Check className="h-4 w-4" />}>
-                <div className="grid gap-3 md:grid-cols-4">
-                  {["Produto", "Preco atual", "Desconto OFF", "Beneficios"].map((item) => (
-                    <div
-                      key={item}
-                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
-                    >
-                      <p className="text-sm font-semibold text-white">{item}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-400">
-                        Interpretacao automatica do texto bruto.
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </GlassPanel>
-
-              <div id="library-section">
-                <GlassPanel title="Biblioteca de exemplos" icon={<BookOpen className="h-4 w-4" />}>
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {libraryExamples.map((template) => (
-                    <button
-                      key={template.name}
-                      onClick={() => {
-                        setRawInput(template.input)
-                        setGenerated(null)
-                        document.getElementById("generator-section")?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start",
-                        })
-                      }}
-                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-cyan-300/40 hover:bg-cyan-300/10"
-                    >
-                      <p className="font-semibold text-white">{template.name}</p>
-                      <p className="mt-1 text-xs text-slate-400">{template.category}</p>
-                    </button>
-                  ))}
-                </div>
-                </GlassPanel>
-              </div>
             </section>
 
             <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
@@ -638,14 +503,10 @@ export function CaptionGenerator() {
 }
 
 function Sidebar({
-  activePlatform,
-  onPlatformChange,
   open,
   onClose,
   onOpenHistory,
 }: {
-  activePlatform: Platform
-  onPlatformChange: (platform: Platform) => void
   open: boolean
   onClose: () => void
   onOpenHistory: () => void
@@ -678,11 +539,6 @@ function Sidebar({
           onClick={() => scrollToSection("generator-section")}
         />
         <SidebarItem
-          icon={<BookOpen className="h-4 w-4" />}
-          label="Biblioteca"
-          onClick={() => scrollToSection("library-section")}
-        />
-        <SidebarItem
           icon={<History className="h-4 w-4" />}
           label="Historico"
           onClick={() => {
@@ -691,35 +547,6 @@ function Sidebar({
           }}
         />
       </nav>
-
-      <div className="mt-7">
-        <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-          Plataformas
-        </p>
-        <div className="space-y-1">
-          {platforms.map((platform) => (
-            <button
-              key={platform.value}
-              onClick={() => {
-                onPlatformChange(platform.value)
-                onClose()
-              }}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm transition",
-                activePlatform === platform.value
-                  ? "bg-cyan-300/14 text-cyan-100 ring-1 ring-cyan-300/25"
-                  : "text-slate-400 hover:bg-white/6 hover:text-white"
-              )}
-            >
-              <span className="flex h-8 w-10 items-center justify-center rounded-xl bg-white/8 text-xs font-bold">
-                {platform.short}
-              </span>
-              <span>{platform.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="mt-auto rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
         <p className="text-sm font-semibold text-cyan-100">Pro engine</p>
         <p className="mt-1 text-xs leading-5 text-slate-400">

@@ -1,11 +1,10 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { BarChart3, Hash, Megaphone, Sparkles } from "lucide-react"
+import { BarChart3, Megaphone, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   GeneratedContent,
-  hashtagModes,
   platforms,
   Platform,
 } from "@/lib/caption-utils"
@@ -107,15 +106,7 @@ export function CaptionPreview({
           {hasHashtags && (
             <div className="md:col-span-2">
               <InfoBlock
-                icon={<Hash className="h-4 w-4" />}
-                label="Hashtags"
-                value={hashtagModes
-                  .filter((mode) => generated.hashtags[mode.value].length > 0)
-                  .map(
-                    (mode) =>
-                      `${mode.label}: ${generated.hashtags[mode.value].join(" ")}`
-                  )
-                  .join("\n")}
+                value={Object.values(generated.hashtags).flat().join(" ")}
                 multiline
               />
             </div>
@@ -132,19 +123,23 @@ function InfoBlock({
   value,
   multiline = false,
 }: {
-  icon: React.ReactNode
-  label: string
+  icon?: React.ReactNode
+  label?: string
   value: string
   multiline?: boolean
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="mb-2 flex items-center gap-2 text-cyan-200">
-        {icon}
-        <span className="text-xs font-semibold uppercase tracking-[0.18em]">
-          {label}
-        </span>
-      </div>
+      {(icon || label) && (
+        <div className="mb-2 flex items-center gap-2 text-cyan-200">
+          {icon}
+          {label && (
+            <span className="text-xs font-semibold uppercase tracking-[0.18em]">
+              {label}
+            </span>
+          )}
+        </div>
+      )}
       <p
         className={cn(
           "text-sm leading-6 text-slate-200",
